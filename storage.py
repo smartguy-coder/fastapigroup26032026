@@ -5,6 +5,7 @@ from schemas import BookCreateSchema, BookSavedSchema
 from settings import settings
 from abc import ABC, abstractmethod
 from datetime import datetime
+from fastapi import HTTPException, status
 
 class BaseStorage(ABC):
 
@@ -24,11 +25,21 @@ class MongoStorage(BaseStorage):
         self.collection = database[settings.BOOKS_COLLECTION]
 
     def get_book(self, book_id: str | ObjectId) -> BookSavedSchema:
-
+        if not ObjectId.is_valid(book_id):
+            raise HTTPException(
+                detail=f"Invalid book id '{book_id}'",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
         query = {
              '_id': ObjectId(book_id)
         }
         raw_book = self.collection.find_one(query)
+        if not raw_book:
+            raise HTTPException(
+                detail=f"Book with id '{book_id}' not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
         book = BookSavedSchema(
             id=str(raw_book['_id']),
             **raw_book
