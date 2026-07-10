@@ -3,3 +3,5 @@
 python -m pip install pymongo
 pip install "fastapi[all]"
 pip freeze > requirements.txt
+
+uvicorn main:app --port 8000 --reload
