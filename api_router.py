@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status
 
-from schemas import BookCreateSchema
+from schemas import BookCreateSchema, BookSavedSchema
+from storage import storage
 
 api_router = APIRouter(
     prefix='/api/books'
@@ -13,8 +14,7 @@ def index_books():
 
 
 @api_router.post('', status_code=status.HTTP_201_CREATED)
-def create_book(book: BookCreateSchema) -> BookCreateSchema:
+def create_book(book: BookCreateSchema) -> BookSavedSchema:
     """the single endpoint for creating book in storage"""
-    print(book)
-    print(type(book))
-    return book
+    created_book = storage.create_book(book)
+    return created_book
