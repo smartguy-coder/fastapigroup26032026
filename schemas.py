@@ -2,10 +2,13 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 
-class BookCreateSchema(BaseModel):
+class BookPriceSchema(BaseModel):
+    price: int = Field(ge=2)
+
+
+class BookCreateSchema(BookPriceSchema):
     title: str = Field(examples=['Я, легенда'])
     author: str
-    price: int = Field(ge=2)
     description: str = ''
 
 
