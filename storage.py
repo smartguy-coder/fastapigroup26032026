@@ -1,7 +1,8 @@
+
 from pymongo import MongoClient
 from bson import ObjectId
 
-from schemas import BookCreateSchema, BookSavedSchema
+from schemas import BookCreateSchema, BookSavedSchema, BookPriceSchema
 from settings import settings
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -17,12 +18,51 @@ class BaseStorage(ABC):
     def get_book(self, book_id: str) -> BookSavedSchema:
         return
 
+    @abstractmethod
+    def get_books(self, page: int, q: str) -> list[BookSavedSchema]:
+        return
+
+    @abstractmethod
+    def delete_book(self, book_id: str) -> None:
+        return
+
+    @abstractmethod
+    def update_book(self, book_id: str, update_data: BookCreateSchema | BookPriceSchema) -> BookSavedSchema:
+        return
+
 
 class MongoStorage(BaseStorage):
     def __init__(self):
         client = MongoClient(settings.URI)
         database = client[settings.SHOP_NAME_DB]
         self.collection = database[settings.BOOKS_COLLECTION]
+
+    def get_books(self, page: int, q: str) -> list[BookSavedSchema]:
+        query = {}
+        if q.strip():
+            search_words = q.replace(',', ' ').split()
+            query_search_words = []
+            for search_word in search_words:
+                if len(search_word) > 1:
+                    query_search_words.append(search_word)
+
+            if query_search_words:
+                print(query_search_words)
+
+                query_search_dicts = []
+                for query_search_word in query_search_words:
+                    query_search_dicts.append(
+                        {'title': {'$regex': query_search_word, "$options": "i"}}
+                    )
+
+                query = {'$and': query_search_dicts}
+
+        skip = (page - 1) * settings.PAGE_SIZE
+        books = self.collection.find(query).limit(settings.PAGE_SIZE).skip(skip)
+        prepared_books = []
+        for raw_book in books:
+            prepared_books.append(   BookSavedSchema(id=str(raw_book['_id']),  **raw_book)    )
+        return prepared_books
 
     def get_book(self, book_id: str | ObjectId) -> BookSavedSchema:
         if not ObjectId.is_valid(book_id):
@@ -60,6 +100,22 @@ class MongoStorage(BaseStorage):
         saved = self.get_book(book_id)
         return saved
 
+    def delete_book(self, book_id: str) -> None:
+        self.get_book(book_id)
+        query = {
+            '_id': ObjectId(book_id)
+        }
+        self.collection.delete_one(query)
+
+    def update_book(self, book_id: str, update_data: BookCreateSchema | BookPriceSchema) -> BookSavedSchema:
+        self.get_book(book_id)
+        new_data = update_data.model_dump()
+        payload = {"$set": new_data}
+        self.collection.update_one(
+            {'_id': ObjectId(book_id)},
+            payload
+        )
+        return self.get_book(book_id)
 
 storage: BaseStorage = MongoStorage()
 

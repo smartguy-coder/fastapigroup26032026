@@ -4,6 +4,7 @@ class Settings(BaseSettings):
     URI: str
     SHOP_NAME_DB: str = 'shop_project'
     BOOKS_COLLECTION: str = 'books'
+    PAGE_SIZE: int = 2
 
     model_config = SettingsConfigDict(
         env_file='.env',
